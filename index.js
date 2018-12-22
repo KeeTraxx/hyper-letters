@@ -1,33 +1,47 @@
+let input
+
+exports.middleware = store => next => action => {
+  // console.log(action.type, action.data)
+  if (action.type === "SESSION_USER_DATA") {
+    input = action.data
+  }
+  next(action)
+}
+
 exports.decorateTerm = (Term, { React, notify }) => {
   return class extends React.Component {
-    constructor (props, context) {
-      super(props, context);
+    constructor(props, context) {
+      super(props, context)
 
       // Draw a frame, this is where physiscs is handled
-      this._drawFrame = this._drawFrame.bind(this);
+      this._drawFrame = this._drawFrame.bind(this)
 
       // Set canvas size for bounces
-      this._resizeCanvas = this._resizeCanvas.bind(this);
+      this._resizeCanvas = this._resizeCanvas.bind(this)
 
       // Set this._div and this._canvas
-      this._onDecorated = this._onDecorated.bind(this);
+      this._onDecorated = this._onDecorated.bind(this)
 
       // Spawn letter when cursor moves
-      this._onCursorMove = this._onCursorMove.bind(this);
+      this._onCursorMove = this._onCursorMove.bind(this)
 
       // Set letter spawn location
       this._spawnLetter = this._spawnLetter.bind(this)
-      
-      this._div = null;
-      this._canvas = null;
+
+      this._div = null
+      this._canvas = null
 
       // Hold array of letters to handle in _drawFrame
-      this._letters = [];
-      this._active = false;
+      this._letters = []
+      this._active = false
     }
 
-    _spawnLetter (letter, x, y) {
-      const length = this._letters.length;
+    _spawnLetter(letter, x, y) {
+      let origin = this._div.getBoundingClientRect()
+      x = x + origin.left
+      y = y + origin.top
+      console.log("Spawning letter", letter, x, y)
+      const length = this._letters.length
 
       // Initial values
       this._letters.push({
@@ -39,63 +53,59 @@ exports.decorateTerm = (Term, { React, notify }) => {
         // rotation
         rot: 0,
         // velocity
-        vx: (Math.random() - 0.5) * 0.5,
-        vy: -0.4,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: -0.2,
         // radial velocity
-        vr: (Math.random() - 0.5) * 0.1,
+        vr: (Math.random() - 0.5) * 0.05,
         // time to live
         ttl: 1000,
         lastBounce: 0
-      });
+      })
 
       if (!this._active) {
-        window.requestAnimationFrame(this._drawFrame);
+        console.log("activating...")
+        window.requestAnimationFrame(this._drawFrame)
         this._active = true
-      }  
+      }
     }
 
-    _onDecorated (term) {
-      if (this.props.onDecorated) this.props.onDecorated(term);
-      this._div = term ? term.termRef : null;
-      this._initCanvas();
+    _onDecorated(term) {
+      console.log("on deco", term)
+      if (this.props.onDecorated) this.props.onDecorated(term)
+      if (term) {
+        console.log("termed")
+        this._div = term.termRef
+        this._initCanvas()
+      }
     }
 
-    _initCanvas () {
-      this._canvas = document.createElement('canvas');
-      this._canvas.style.position = 'absolute';
-      this._canvas.style.top = '0';
-      this._canvas.style.pointerEvents = 'none';
-      this._canvasContext = this._canvas.getContext('2d');
-      this._canvas.width = window.innerWidth;
-      this._canvas.height = window.innerHeight;
-      document.body.appendChild(this._canvas);
-      // window.requestAnimationFrame(this._drawFrame);
-      window.addEventListener('resize', this._resizeCanvas);
-      window.addEventListener('keydown', (ev) => {
-        if (ev.key.match(/^[\u0020-\u007e\u00a0-\u00ff]$/)) {
-          let origin = this._div.getBoundingClientRect();
-          let modifiers = []
-          ev.ctrlKey && modifiers.push('Ctrl')
-          this._spawnLetter((ev.ctrlKey ? '^' : '') + ev.key, this._cursorPosition.x + origin.left, this._cursorPosition.y + origin.top)
-        }
-      })
+    _initCanvas() {
+      this._canvas = document.createElement("canvas")
+      this._canvas.style.position = "absolute"
+      this._canvas.style.top = "0"
+      this._canvas.style.pointerEvents = "none"
+      this._canvasContext = this._canvas.getContext("2d")
+      this._canvas.width = window.innerWidth
+      this._canvas.height = window.innerHeight
+      document.body.appendChild(this._canvas)
+      window.addEventListener("resize", this._resizeCanvas)
     }
 
-    _drawFrame (time) {
+    _drawFrame(time) {
       if (!this._lastRender) {
         this._lastRender = time
-        window.requestAnimationFrame(this._drawFrame);
+        window.requestAnimationFrame(this._drawFrame)
         return
       }
-      let dt = time - this.lastRender
-      this.lastRender = time
+      let dt = time - this._lastRender
+      this._lastRender = time
 
-      console.log(dt)
-      
-      // this._canvasContext.clearRect(0, 0, this._canvas.width, this._canvas.height);
-      // this._canvasContext.fillStyle = 'rgba(255,0,0,0.4)'
-      this._canvasContext.clearRect(0, 0, this._canvas.width, this._canvas.height);
-      // this._canvasContext.fillRect(0, 0, this._canvas.width, this._canvas.height - 100);
+      this._canvasContext.clearRect(
+        0,
+        0,
+        this._canvas.width,
+        this._canvas.height
+      )
       // handle each letter
       this._letters.forEach(l => {
         // when the character bounces off bottom
@@ -103,8 +113,8 @@ exports.decorateTerm = (Term, { React, notify }) => {
           // bouncyness
           l.vy *= -0.6
 
-          // inverse rotation
-          l.vr *= -1
+          // random rotation
+          l.vr = (Math.random() - 0.5) * 0.05,
 
           // dampen horizontal speed
           l.vx *= 0.8
@@ -113,10 +123,13 @@ exports.decorateTerm = (Term, { React, notify }) => {
 
         l.lastBounce++
 
-        // TODO: Maybe handle left / right walls too?
+        // handle left / right walls too?
+        if (l.x <= 0 || l.x > this._canvas.width) {
+          l.vx = -l.vx
+        }
 
         // gravity
-        l.vy += 0.02
+        l.vy += 0.01
 
         // physics
         l.x += l.vx * dt
@@ -126,56 +139,57 @@ exports.decorateTerm = (Term, { React, notify }) => {
         l.rot += l.vr * dt
         l.ttl--
 
-        this._canvasContext.save();
-        this._canvasContext.translate(l.x, l.y);
-        this._canvasContext.rotate(l.rot);
-        this._canvasContext.font = `${this.props.fontSize}pt ${this.props.fontFamily}`;
-        this._canvasContext.fillStyle = this.props.foregroundColor;
-        this._canvasContext.textAlign = 'center';
-        this._canvasContext.fillText(l.letter, 0, 0);
-        this._canvasContext.restore();
+        this._canvasContext.save()
+        this._canvasContext.translate(l.x, l.y)
+        this._canvasContext.rotate(l.rot)
+        this._canvasContext.font = `${this.props.fontSize}pt ${
+          this.props.fontFamily
+        }`
+        this._canvasContext.fillStyle = this.props.foregroundColor
+        this._canvasContext.textAlign = "center"
+        this._canvasContext.fillText(l.letter, 0, 0)
+        this._canvasContext.restore()
       })
 
       // request a new animation frame when there are still letters left
       if (this._letters.length > 0) {
-        window.requestAnimationFrame(this._drawFrame);
+        window.requestAnimationFrame(this._drawFrame)
       } else {
-        this._active = false;
+        console.log("deactivating...")
+        this._active = false
       }
 
       // remove letter when TTL is 0
-      this._letters = this._letters.filter(l => l.ttl > 0);
+      this._letters = this._letters.filter(l => l.ttl > 0)
     }
 
-    _resizeCanvas () {
-      this._canvas.width = window.innerWidth;
-      this._canvas.height = window.innerHeight;
+    _resizeCanvas() {
+      this._canvas.width = window.innerWidth
+      this._canvas.height = window.innerHeight
     }
 
-    _onCursorMove (cursorFrame) {
-      if (this.props.onCursorMove) this.props.onCursorMove(cursorFrame);
-      
-      const { x, y } = cursorFrame;
-      this._cursorPosition = {x , y}
-      // const origin = this._div.getBoundingClientRect();
-      /* requestAnimationFrame(() => {
-        // this._spawnLetter(x+origin.left, y+origin.top);
-        if (!active) {
-          active = true;
-          this._drawFrame();
-        }
-      })*/
+    _onCursorMove(cursorFrame) {
+      if (this.props.onCursorMove) this.props.onCursorMove(cursorFrame)
+
+      const { x, y } = cursorFrame
+      this._cursorPosition = { x, y }
+      if (input && input.match(/^[\u0020-\u007e\u00a0-\u00ff]$/)) {
+        this._spawnLetter(input, x, y)
+      }
     }
 
-    render () {
-      return React.createElement(Term, Object.assign({}, this.props, {
-        onDecorated: this._onDecorated,
-        onCursorMove: this._onCursorMove
-      }));
+    render() {
+      return React.createElement(
+        Term,
+        Object.assign({}, this.props, {
+          onDecorated: this._onDecorated,
+          onCursorMove: this._onCursorMove
+        })
+      )
     }
 
-    componentWillUnmount () {
-      document.body.removeChild(this._canvas);
+    componentWillUnmount() {
+      document.body.removeChild(this._canvas)
     }
   }
 }
